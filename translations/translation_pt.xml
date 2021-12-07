@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<l10n>
+  <translationContributors>TheChoseOne900</translationContributors>
+
+  <texts>
+    <text name="input_FS22_EnhancedVehicle_SNAP_ONOFF"      text="EV: Bloqueia sentido actual"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_ONOFF2"     text="EV: Bloqueia sentido anterior"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_REVERSE"    text="EV: Bloqueia sentido inverso (180°)"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_LINES"      text="EV: Linhas de assistência on/off"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_INC1"       text="EV: Aumenta bloqueio de sentido em 1°"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_DEC1"       text="EV: Diminui bloqueio de sentido em 1°"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_INC2"       text="EV: Aumenta bloqueio de sentido em 45°"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_DEC2"       text="EV: Diminui bloqueio de sentido em 45°"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_INC3"       text="EV: Aumenta bloqueio de sentido em 90°"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_DEC3"       text="EV: Diminui bloqueio de sentido em 90°"/>
+    <text name="input_FS22_EnhancedVehicle_FD"              text="EV: Bloqueio do diferencial dianteiro on/off"/>
+    <text name="input_FS22_EnhancedVehicle_RD"              text="EV: Bloqueio do diferencial traseiro on/off"/>
+    <text name="input_FS22_EnhancedVehicle_BD"              text="EV: Bloqueio de ambos os diferenciais on/off"/>
+    <text name="input_FS22_EnhancedVehicle_DM"              text="EV: Alterar modo de tracção"/>
+    <text name="input_FS22_EnhancedVehicle_AJ_REAR_UPDOWN"  text="EV: Hidráulico trás cima/baixo"/>
+    <text name="input_FS22_EnhancedVehicle_AJ_REAR_ONOFF"   text="EV: Hidráulico trás on/off"/>
+    <text name="input_FS22_EnhancedVehicle_AJ_FRONT_UPDOWN" text="EV: Hidráulico frente cima/baixo"/>
+    <text name="input_FS22_EnhancedVehicle_AJ_FRONT_ONOFF"  text="EV: Hidráulico frente on/off"/>
+    <text name="input_FS22_EnhancedVehicle_MENU"            text="EV: open config menu"/>
+
+    <text name="ui_FS22_EnhancedVehicle_on"  text="On"/>
+    <text name="ui_FS22_EnhancedVehicle_off" text="Off"/>
+
+    <text name="ui_FS22_EnhancedVehicle_sectionGlobalFunctions" text="Global Settings"/>
+    <text name="ui_FS22_EnhancedVehicle_sectionHUD"             text="HUD Settings"/>
+    <text name="ui_FS22_EnhancedVehicle_sectionSnapSettings"    text="Lane Keeping Assistent Settings"/>
+
+    <text name="ui_FS22_EnhancedVehicle_resetConfigButton"  text="Reset Mod configuration"/>
+    <text name="ui_FS22_EnhancedVehicle_resetConfigTitle"   text="Reset configuration file"/>
+    <text name="ui_FS22_EnhancedVehicle_resetConfigTT"      text="ATTENTION: This will set all settings for this mod back to its default!"/>
+    <text name="ui_FS22_EnhancedVehicle_reloadConfigButton" text="Reload Mod configuration (XML)"/>
+    <text name="ui_FS22_EnhancedVehicle_reloadConfigTitle"  text="Reload configuration file"/>
+    <text name="ui_FS22_EnhancedVehicle_reloadConfigTT"     text="Reload the configuration file from disk. Necessary after manual changes in the XML file."/>
+
+    <text name="ui_FS22_EnhancedVehicle_snapTitle"      text="Lane Keeping Assistent"/>
+    <text name="ui_FS22_EnhancedVehicle_snapTT"         text="Turn on/off global lane keeping assistent functionality"/>
+    <text name="ui_FS22_EnhancedVehicle_diffTitle"      text="Differential lock"/>
+    <text name="ui_FS22_EnhancedVehicle_diffTT"         text="Turn on/off global differential lock functionality"/>
+    <text name="ui_FS22_EnhancedVehicle_hydraulicTitle" text="Improved hydraulic control"/>
+    <text name="ui_FS22_EnhancedVehicle_hydraulicTT"    text="Turn on/off global improved hydraulic control functionality"/>
+
+    <text name="ui_FS22_EnhancedVehicle_HUDdiffTitle"   text="HUD: Differential lock"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDdiffTT"      text="Turn on/off the HUD display for differential lock"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDdmgTitle"    text="HUD: Damage values"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDdmgTT"       text="Turn on/off the HUD display for damage values"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDfuelTitle"   text="HUD: Fuel values"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDfuelTT"      text="Turn on/off the HUD display for fuel values"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDsnapTitle"   text="HUD: Lane keeping assistant"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDsnapTT"      text="Turn on/off the HUD display for the lane keeping assistant driving direction"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDrpmTitle"    text="HUD: RPM"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDrpmTT"       text="Turn on/off the HUD display for the RPM number"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDtempTitle"   text="HUD: Engine temperature"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDtempTT"      text="Turn on/off the HUD display for the engine temperature"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDmiscTitle"   text="HUD: Misc values (Weight)"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDmiscTT"      text="Turn on/off the HUD display for misc values (e.g. weight)"/>
+
+    <text name="ui_FS22_EnhancedVehicle_HUDdmgAmountLeftTitle" text="HUD: Damage values mode"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDdmgAmountLeftTT"    text="Display damage values in '% left' rather than '% damaged'"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDdmgAmountLeftO1"    text="% left"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDdmgAmountLeftO2"    text="% damaged"/>
+
+    <text name="ui_FS22_EnhancedVehicle_snapSettingsAngleTitle" text="Snap To Angle"/>
+    <text name="ui_FS22_EnhancedVehicle_snapSettingsAngleTT"    text="Determines in which degree steps the driving direction is engaged (1°-90°)"/>
+
+  </texts>
+</l10n>
