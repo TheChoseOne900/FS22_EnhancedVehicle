@@ -13,13 +13,13 @@ This is a Mod for Farming Simulator 22. It adds a basic "snap driving direction"
 License: https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 ## Known bugs
-* none
+* No bug, but I'm not 100% satisfied with the grid visualization for asymmetric attachments like plows...
 
 ## Default Keybindings
 | Key | Action |
 | --  | --     |
 | <kbd>Ctrl</kbd>+<kbd>Num /</kbd> | opens the config dialog to adjust various settings |
-| <kbd>R Ctrl</kbd>+<kbd>End</kbd> | snap current driving direction |
+| <kbd>R Ctrl</kbd>+<kbd>End</kbd> | snap current driving direction or snap to track lane |
 | <kbd>R Shift</kbd>+<kbd>End</kbd> | snap previous driving direction (=resume old direction)|
 | <kbd>R Ctrl</kbd>+<kbd>Home</kbd> | reverse snap direction (180°) and enable snap|
 | <kbd>R Shift</kbd>+<kbd>Home</kbd> | turn on/off visualization of driving direction (Helplines/Hilfslinien)|
@@ -44,7 +44,8 @@ License: https://creativecommons.org/licenses/by-nc-sa/4.0/
 * Press <kbd>Ctrl</kbd>+<kbd>Numpad /</kbd> to open the config dialog.
 * Press <kbd>R Ctrl</kbd>+<kbd>End</kbd> to keep your vehicle driving in the current direction.
   * Press <kbd>R Ctrl</kbd>+<kbd>Home</kbd> to reverse snap direction (useful after turn around at end of field)
-* Press <kbd>R Ctrl</kbd>+<kbd>Numpad 1</kbd> to draw a lane layout in the ground
+* Press <kbd>R Ctrl</kbd>+<kbd>Numpad 1</kbd> to enable the lane assistant
+  * If you now enable snap mode the vehicle will drive on the current marked lane
 * On HUD it displays:
   * Damage values in % for controlled vehicle and all its attachments.
   * Fuel fill level for Diesel/AdBlue/Electric/Methane and the current fuel usage rate<sup>1</sup>.
