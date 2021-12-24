@@ -3,7 +3,7 @@
 --
 -- Author: Majo76
 -- email: ls22@dark-world.de
--- @Date: 07.12.2021
+-- @Date: 20.12.2021
 -- @Version: 1.0.0.0
 
 local myName = "FS22_EnhancedVehicle_UI"
@@ -21,6 +21,7 @@ FS22_EnhancedVehicle_UI.CONTROLS = {
   "sectionGlobalFunctions",
   "sectionHUD",
   "sectionSnapSettings",
+  "sectionHeadlandSettings",
 
   "resetConfigButton",
   "resetConfigTitle",
@@ -40,6 +41,13 @@ FS22_EnhancedVehicle_UI.CONTROLS = {
   "HUDdmgAmountLeftSetting",
   "HUDdmgAmountLeftTitle",
   "HUDdmgAmountLeftTT",
+
+  "headlandModeSetting",
+  "headlandModeTitle",
+  "headlandModeTT",
+  "headlandDistanceSetting",
+  "headlandDistanceTitle",
+  "headlandDistanceTT",
 }
 
 local EV_elements_global = { 'snap', 'diff', 'hydraulic' }
@@ -49,12 +57,14 @@ for _, v in pairs( EV_elements_global ) do
   table.insert(FS22_EnhancedVehicle_UI.CONTROLS, v.."TT")
 end
 
-local EV_elements_HUD = { 'fuel', 'dmg', 'misc', 'rpm', 'temp', 'diff', 'snap' }
+local EV_elements_HUD = { 'fuel', 'dmg', 'misc', 'rpm', 'temp', 'diff', 'track' }
   for _, v in pairs( EV_elements_HUD ) do
   table.insert(FS22_EnhancedVehicle_UI.CONTROLS, "HUD"..v.."Setting")
   table.insert(FS22_EnhancedVehicle_UI.CONTROLS, "HUD"..v.."Title")
   table.insert(FS22_EnhancedVehicle_UI.CONTROLS, "HUD"..v.."TT")
 end
+
+local EV_elements_distances = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -12, -14, -16, -18, -20 }
 
 -- #############################################################################
 
@@ -64,6 +74,9 @@ function FS22_EnhancedVehicle_UI.new(target, custom_mt)
   local self = DialogElement.new(target, custom_mt or FS22_EnhancedVehicle_UI_mt)
 
   self:registerControls(FS22_EnhancedVehicle_UI.CONTROLS)
+
+  self.vehicle = nil
+
   return self
 end
 
@@ -71,6 +84,14 @@ end
 
 function FS22_EnhancedVehicle_UI:delete()
   if debug > 1 then print("-> " .. myName .. ": delete ") end
+end
+
+-- #############################################################################
+
+function FS22_EnhancedVehicle_UI:setVehicle(vehicle)
+  if debug > 1 then print("-> " .. myName .. ": setVehicle ") end
+
+  self.vehicle = vehicle
 end
 
 -- #############################################################################
@@ -97,6 +118,7 @@ function FS22_EnhancedVehicle_UI:onOpen()
   self.sectionGlobalFunctions:setText(g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_sectionGlobalFunctions"))
   self.sectionHUD:setText(g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_sectionHUD"))
   self.sectionSnapSettings:setText(g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_sectionSnapSettings"))
+  self.sectionHeadlandSettings:setText(g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_sectionHeadlandSettings").." "..self.vehicle:getFullName())
 
   -- global elements
   for _, v in pairs(EV_elements_global) do
@@ -114,6 +136,33 @@ function FS22_EnhancedVehicle_UI:onOpen()
   -- snap to angle
   self.snapSettingsAngleTitle:setText(g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_snapSettingsAngleTitle"))
   self.snapSettingsAngleTT:setText(g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_snapSettingsAngleTT"))
+
+  -- headland mode
+  self.headlandModeTitle:setText(g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_headlandModeTitle"))
+  self.headlandModeTT:setText(g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_headlandModeTT"))
+  self.headlandModeSetting:setTexts({
+      g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_headlandModeOption1"),
+      g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_headlandModeOption2"),
+      g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_headlandModeOption3")
+    })
+
+  -- headland distance
+  self.headlandDistanceTitle:setText(g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_headlandDistanceTitle"))
+  self.headlandDistanceTT:setText(g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_headlandDistanceTT"))
+  local _dists = {}
+  local _addtxt = ""
+  if self.vehicle.vData.track.workWidth ~= nil then
+    _addtxt = " ("..tostring(Round(self.vehicle.vData.track.workWidth, 1)).."m)"
+  end
+  table.insert(_dists, g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_headlandDistanceOption1").._addtxt)
+  for _, d in pairs(EV_elements_distances) do
+    if d >= 0 then
+      table.insert(_dists, tostring(d).."m "..g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_headlandDistanceOptionBefore"))
+    else
+      table.insert(_dists, tostring(math.abs(d)).."m "..g_i18n.modEnvironments[modName]:getText("ui_FS22_EnhancedVehicle_headlandDistanceOptionAfter"))
+    end
+  end
+  self.headlandDistanceSetting:setTexts(_dists)
 
   -- HUD elements
   for _, v in pairs(EV_elements_HUD) do
@@ -157,6 +206,24 @@ function FS22_EnhancedVehicle_UI:updateValues()
   -- snap to angle
   self.snapSettingsAngleValue:setText(tostring(lC:getConfigValue("snap", "snapToAngle")))
 
+  -- headland mode
+  self.headlandModeSetting:setState(self.vehicle.vData.track.headlandMode)
+
+  -- headland distance
+  local _state = 0
+  if self.vehicle.vData.track.headlandDistance == 9999 then --self.vehicle.vData.track.workWidth then
+    _state = 1
+  end
+  local _i = 2
+  for _, d in pairs(EV_elements_distances) do
+    if self.vehicle.vData.track.headlandDistance == d then
+      _state = _i
+    end
+    _i = _i + 1
+  end
+
+  self.headlandDistanceSetting:setState(_state)
+
   -- HUD dmg display mode
   self.HUDdmgAmountLeftSetting:setState(lC:getConfigValue("hud.dmg", "showAmountLeft") and 1 or 2)
 end
@@ -165,6 +232,9 @@ end
 
 function FS22_EnhancedVehicle_UI:onClickOk()
   if debug > 1 then print("-> " .. myName .. ": onClickOk ") end
+
+  -- jump out if no vehicle is present
+  if self.vehicle == nil then return end
 
   local state
 
@@ -196,9 +266,29 @@ function FS22_EnhancedVehicle_UI:onClickOk()
   end
   lC:setConfigValue("snap", "snapToAngle", n)
 
+  -- headland mode
+  self.vehicle.vData.track.headlandMode = self.headlandModeSetting:getState()
+
+  -- headland distance
+  local _state = self.headlandDistanceSetting:getState()
+  self.vehicle.vData.track.headlandDistance = 0
+  if _state == 1 then
+    self.vehicle.vData.track.headlandDistance = 9999
+  end
+  local _i = 2
+  for _, d in pairs(EV_elements_distances) do
+    if _state == _i then
+      self.vehicle.vData.track.headlandDistance = d
+    end
+    _i = _i + 1
+  end
+
   -- write and update our config
   lC:writeConfig()
   FS22_EnhancedVehicle:activateConfig()
+
+  -- update HUD
+  FS22_EnhancedVehicle.ui_hud:storeScaledValues()
 
   -- close screen
   g_gui:closeDialogByName("FS22_EnhancedVehicle_UI")

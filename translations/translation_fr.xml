@@ -4,7 +4,6 @@
 
   <texts>
     <text name="input_FS22_EnhancedVehicle_SNAP_ONOFF"      text="EV: Blocage de la direction actuelle"/>
-    <text name="input_FS22_EnhancedVehicle_SNAP_ONOFF2"     text="EV: Reprise du Blocage de direction précédente"/>
     <text name="input_FS22_EnhancedVehicle_SNAP_REVERSE"    text="EV: Retourner la direction (180°)"/>
     <text name="input_FS22_EnhancedVehicle_SNAP_LINES"      text="EV: Lignes d'aides on/off"/>
     <text name="input_FS22_EnhancedVehicle_SNAP_INC1"       text="EV: augmenter la direction de 1°"/>
@@ -15,6 +14,15 @@
     <text name="input_FS22_EnhancedVehicle_SNAP_DEC3"       text="EV: diminuer la direction de 90°"/>
     <text name="input_FS22_EnhancedVehicle_SNAP_GRID_ONOFF" text="EV: Grid on/off"/>
     <text name="input_FS22_EnhancedVehicle_SNAP_GRID_RESET" text="EV: Reset grid"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_INC_TRACK"  text="EV: Increase amount of turnover tracks"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_DEC_TRACK"  text="EV: Decrease amount of turnover tracks"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_INC_TRACKP" text="EV: Move tracks to the right"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_DEC_TRACKP" text="EV: Move tracks to the left"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_INC_TRACKW" text="EV: Increase width of tracks"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_DEC_TRACKW" text="EV: Decrease width of tracks"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_INC_TRACKO" text="EV: Move offset line to the right"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_DEC_TRACKO" text="EV: Move offset line to the left"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_HL_MODE"    text="EV: Change headland mode"/>
     <text name="input_FS22_EnhancedVehicle_FD"              text="EV: Blocage differentiel avant on/off"/>
     <text name="input_FS22_EnhancedVehicle_RD"              text="EV: Blocage differentiel arriere on/off"/>
     <text name="input_FS22_EnhancedVehicle_BD"              text="EV: Blocage tous differentiels on/off"/>
@@ -25,12 +33,17 @@
     <text name="input_FS22_EnhancedVehicle_AJ_FRONT_ONOFF"  text="EV: outil avant on/off"/>
     <text name="input_FS22_EnhancedVehicle_MENU"            text="EV: ouvrir le menu de configuration"/>
 
+    <text name="hud_FS22_EnhancedVehicle_notrack"    text="no track"/>
+    <text name="hud_FS22_EnhancedVehicle_nowidth"    text="no width"/>
+    <text name="hud_FS22_EnhancedVehicle_noheadland" text="no headland"/>
+
     <text name="ui_FS22_EnhancedVehicle_on"  text="On"/>
     <text name="ui_FS22_EnhancedVehicle_off" text="Off"/>
 
-    <text name="ui_FS22_EnhancedVehicle_sectionGlobalFunctions" text="Réglages"/>
-    <text name="ui_FS22_EnhancedVehicle_sectionHUD"             text="parametre du HUD"/>
-    <text name="ui_FS22_EnhancedVehicle_sectionSnapSettings"    text="Réglages de l'assistant de conduite en ligne"/>
+    <text name="ui_FS22_EnhancedVehicle_sectionGlobalFunctions"  text="Réglages"/>
+    <text name="ui_FS22_EnhancedVehicle_sectionHUD"              text="parametre du HUD"/>
+    <text name="ui_FS22_EnhancedVehicle_sectionSnapSettings"     text="Réglages de l'assistant de conduite en ligne"/>
+    <text name="ui_FS22_EnhancedVehicle_sectionHeadlandSettings" text="Headland Settings for"/>
 
     <text name="ui_FS22_EnhancedVehicle_resetConfigButton"  text="Réinitialisation de la configuration du Mod"/>
     <text name="ui_FS22_EnhancedVehicle_resetConfigTitle"   text="Réinitialisation du fichier de configuration"/>
@@ -52,8 +65,8 @@
     <text name="ui_FS22_EnhancedVehicle_HUDdmgTT"       text="Turn on/off Affichage de l'usure sur le HUD"/>
     <text name="ui_FS22_EnhancedVehicle_HUDfuelTitle"   text="HUD: Gazoil"/>
     <text name="ui_FS22_EnhancedVehicle_HUDfuelTT"      text="Turn on/off Affichage du Gazoil sur le HUD"/>
-    <text name="ui_FS22_EnhancedVehicle_HUDsnapTitle"   text="HUD: Assistant de conduite en ligne"/>
-    <text name="ui_FS22_EnhancedVehicle_HUDsnapTT"      text="Turn on/off Affichage de l'Assistant de conduite en ligne sur le HUD"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDtrackTitle"  text="HUD: Assistant de conduite en ligne"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDtrackTT"     text="Turn on/off Affichage de l'Assistant de conduite en ligne sur le HUD"/>
     <text name="ui_FS22_EnhancedVehicle_HUDrpmTitle"    text="HUD: RPM"/>
     <text name="ui_FS22_EnhancedVehicle_HUDrpmTT"       text="Turn on/off Affichage des RPM sur le HUD"/>
     <text name="ui_FS22_EnhancedVehicle_HUDtempTitle"   text="HUD: Temperature moteur"/>
@@ -69,8 +82,21 @@
     <text name="ui_FS22_EnhancedVehicle_snapSettingsAngleTitle" text="Blocage Angle"/>
     <text name="ui_FS22_EnhancedVehicle_snapSettingsAngleTT"    text="Pas de réglagle du Blocage de direction (1°-90°)"/>
 
-    <text name="global_FS22_EnhancedVehicle_snapNotEnabled" text="Lane Keeping Assistant is not enabled."/>
-    <text name="global_FS22_EnhancedVehicle_snapNoImplement" text="Did not find a device with a working width."/>
+    <text name="ui_FS22_EnhancedVehicle_headlandModeTitle"   text="Headland mode"/>
+    <text name="ui_FS22_EnhancedVehicle_headlandModeTT"      text="What should happen if headland is reached"/>
+    <text name="ui_FS22_EnhancedVehicle_headlandModeOption1" text="Nothing"/>
+    <text name="ui_FS22_EnhancedVehicle_headlandModeOption2" text="Turn around automatically"/>
+    <text name="ui_FS22_EnhancedVehicle_headlandModeOption3" text="Disable cruise control"/>
+
+    <text name="ui_FS22_EnhancedVehicle_headlandDistanceTitle"        text="Headland distance"/>
+    <text name="ui_FS22_EnhancedVehicle_headlandDistanceTT"           text="Turn around how many meters before end of field"/>
+    <text name="ui_FS22_EnhancedVehicle_headlandDistanceOption1"      text="Working width"/>
+    <text name="ui_FS22_EnhancedVehicle_headlandDistanceOptionBefore" text="before end of field"/>
+    <text name="ui_FS22_EnhancedVehicle_headlandDistanceOptionAfter"  text="behind end of field"/>
+
+    <text name="global_FS22_EnhancedVehicle_snapNotEnabled"   text="Track Assistant is not enabled."/>
+    <text name="global_FS22_EnhancedVehicle_snapNoImplement"  text="Did not find a device with a working width."/>
+    <text name="global_FS22_EnhancedVehicle_snapNoImplement2" text="Did not find a device with a working width. Press again to create a default track layout."/>
 
   </texts>
 </l10n>

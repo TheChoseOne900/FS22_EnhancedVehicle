@@ -61,6 +61,31 @@
         <GuiElement type="text"   profile="multiTextOptionSettingsTooltip" id="hydraulicTT"/>
       </GuiElement> 
 
+      <!-- headland settings -->
+      <GuiElement type="text" profile="dialogHeaderText"/>
+      <GuiElement type="text" profile="dialogHeaderText" id="sectionHeadlandSettings"/>
+      <GuiElement type="text" profile="dialogHeaderText"/>
+
+      <!-- headland mode -->
+      <GuiElement type="multiTextOption" profile="multiTextOptionSettings" id="headlandModeSetting">
+        <GuiElement type="button" profile="multiTextOptionSettingsLeft"/>
+        <GuiElement type="button" profile="multiTextOptionSettingsRight"/>
+        <GuiElement type="text"   profile="multiTextOptionSettingsText"/>
+        <GuiElement type="text"   profile="multiTextOptionSettingsTitle" id="headlandModeTitle"/>
+        <GuiElement type="bitmap" profile="multiTextOptionSettingsBg"/>
+        <GuiElement type="text"   profile="multiTextOptionSettingsTooltip" id="headlandModeTT"/>
+      </GuiElement>
+
+      <!-- headland distance -->
+      <GuiElement type="multiTextOption" profile="multiTextOptionSettings" id="headlandDistanceSetting">
+        <GuiElement type="button" profile="multiTextOptionSettingsLeft"/>
+        <GuiElement type="button" profile="multiTextOptionSettingsRight"/>
+        <GuiElement type="text"   profile="multiTextOptionSettingsText"/>
+        <GuiElement type="text"   profile="multiTextOptionSettingsTitle" id="headlandDistanceTitle"/>
+        <GuiElement type="bitmap" profile="multiTextOptionSettingsBg"/>
+        <GuiElement type="text"   profile="multiTextOptionSettingsTooltip" id="headlandDistanceTT"/>
+      </GuiElement>
+
       <!-- snap settings -->
       <GuiElement type="text" profile="dialogHeaderText"/>
       <GuiElement type="text" profile="dialogHeaderText" id="sectionSnapSettings"/>
@@ -68,7 +93,7 @@
 
       <!-- angle -->
       <GuiElement type="empty" profile="ingameMenuGameSettingsTextInputWrapper">
-        <GuiElement type="textInput" profile="ingameMenuGameSettingsTextInput" id="snapSettingsAngleValue" imeKeyboardType="normal" onTextChanged="onTextChanged_SnapAngle" />
+        <GuiElement type="textInput" profile="ingameMenuGameSettingsTextInput" id="snapSettingsAngleValue" imeKeyboardType="normal" maxCharacters="5" onTextChanged="onTextChanged_SnapAngle" />
         <GuiElement type="text"      profile="multiTextOptionSettingsTitle"    id="snapSettingsAngleTitle"/>
         <GuiElement type="text"      profile="multiTextOptionSettingsTooltip"  id="snapSettingsAngleTT"/>
       </GuiElement>
@@ -78,6 +103,15 @@
       <GuiElement type="text" profile="dialogHeaderText" id="sectionHUD"/>
       <GuiElement type="text" profile="dialogHeaderText"/>
 
+      <!-- HUD: track -->
+      <GuiElement type="multiTextOption" profile="multiTextOptionSettings" id="HUDtrackSetting">
+        <GuiElement type="button" profile="multiTextOptionSettingsLeft"/>
+        <GuiElement type="button" profile="multiTextOptionSettingsRight"/>
+        <GuiElement type="text"   profile="multiTextOptionSettingsText"/>
+        <GuiElement type="text"   profile="multiTextOptionSettingsTitle" id="HUDtrackTitle"/>
+        <GuiElement type="bitmap" profile="multiTextOptionSettingsBg"/>
+        <GuiElement type="text"   profile="multiTextOptionSettingsTooltip" id="HUDtrackTT"/>
+      </GuiElement>
       <!-- HUD: diff -->
       <GuiElement type="multiTextOption" profile="multiTextOptionSettings" id="HUDdiffSetting">
         <GuiElement type="button" profile="multiTextOptionSettingsLeft"/>
@@ -112,15 +146,6 @@
         <GuiElement type="text"   profile="multiTextOptionSettingsTitle" id="HUDfuelTitle"/>
         <GuiElement type="bitmap" profile="multiTextOptionSettingsBg"/>
         <GuiElement type="text"   profile="multiTextOptionSettingsTooltip" id="HUDfuelTT"/>
-      </GuiElement> 
-      <!-- HUD: snap -->
-      <GuiElement type="multiTextOption" profile="multiTextOptionSettings" id="HUDsnapSetting">
-        <GuiElement type="button" profile="multiTextOptionSettingsLeft"/>
-        <GuiElement type="button" profile="multiTextOptionSettingsRight"/>
-        <GuiElement type="text"   profile="multiTextOptionSettingsText"/>
-        <GuiElement type="text"   profile="multiTextOptionSettingsTitle" id="HUDsnapTitle"/>
-        <GuiElement type="bitmap" profile="multiTextOptionSettingsBg"/>
-        <GuiElement type="text"   profile="multiTextOptionSettingsTooltip" id="HUDsnapTT"/>
       </GuiElement> 
       <!-- HUD: rpm -->
       <GuiElement type="multiTextOption" profile="multiTextOptionSettings" id="HUDrpmSetting">
