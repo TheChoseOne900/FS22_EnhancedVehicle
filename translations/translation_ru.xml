@@ -22,6 +22,8 @@
     <text name="input_FS22_EnhancedVehicle_SNAP_TRACKW_2"   text="EV: Уменьшить ширину полосы"/>
     <text name="input_FS22_EnhancedVehicle_SNAP_TRACKO_1"   text="EV: Сдвинуть полосу смещения вправо"/>
     <text name="input_FS22_EnhancedVehicle_SNAP_TRACKO_2"   text="EV: Сдвинуть полосу смещения влево"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_TRACKJ_1"   text="EV: Переместиться на одну полосу вправо (без разворота)"/>
+    <text name="input_FS22_EnhancedVehicle_SNAP_TRACKJ_2"   text="EV: Переместиться на одну полосу влево (без разворота)"/>
     <text name="input_FS22_EnhancedVehicle_SNAP_HL_MODE"    text="EV: Изменить режим поворотной полосы"/>
     <text name="input_FS22_EnhancedVehicle_SNAP_HL_DIST_1"  text="EV: Увел. расст. разворотной полосы до конца поля"/>
     <text name="input_FS22_EnhancedVehicle_SNAP_HL_DIST_2"  text="EV: Умен. расст. разворотной полосы до конца поля"/>
@@ -34,6 +36,8 @@
     <text name="input_FS22_EnhancedVehicle_AJ_FRONT_UPDOWN" text="EV: Передняя гидравлика поднять/опустить"/>
     <text name="input_FS22_EnhancedVehicle_AJ_FRONT_ONOFF"  text="EV: Передняя гидравлика вкл/выкл"/>
     <text name="input_FS22_EnhancedVehicle_MENU"            text="EV: Открыть меню конфигурации"/>
+    <text name="input_FS22_EnhancedVehicle_PARK"            text="EV: Parking brake on/off"/>
+    <text name="input_FS22_EnhancedVehicle_PARK_ONOFF"      text="EV: Activate/Deactivate availability of parking brake"/>
 
     <text name="hud_FS22_EnhancedVehicle_notrack"     text="нет полосы"/>
     <text name="hud_FS22_EnhancedVehicle_nowidth"     text="шир. неизвестна"/>
@@ -56,12 +60,14 @@
     <text name="ui_FS22_EnhancedVehicle_reloadConfigTitle"  text="Перезагрузить файл конфигурации"/>
     <text name="ui_FS22_EnhancedVehicle_reloadConfigTT"     text="Перезагрузить файл конфигурации с диска. Необходимо после внесения изменений в XML-файл вручную."/>
 
-    <text name="ui_FS22_EnhancedVehicle_snapTitle"      text="Помощник"/>
-    <text name="ui_FS22_EnhancedVehicle_snapTT"         text="Вкл/выкл глобальные функции помошника"/>
-    <text name="ui_FS22_EnhancedVehicle_diffTitle"      text="Блокировка дифференциала"/>
-    <text name="ui_FS22_EnhancedVehicle_diffTT"         text="Вкл/выкл глобальные функции блокировки дифференциала"/>
-    <text name="ui_FS22_EnhancedVehicle_hydraulicTitle" text="Улучшенное гидравлическое управление"/>
-    <text name="ui_FS22_EnhancedVehicle_hydraulicTT"    text="Вкл/выкл глобальные функции управления гидравликой"/>
+    <text name="ui_FS22_EnhancedVehicle_snapTitle"         text="Помощник"/>
+    <text name="ui_FS22_EnhancedVehicle_snapTT"            text="Вкл/выкл глобальные функции помошника"/>
+    <text name="ui_FS22_EnhancedVehicle_diffTitle"         text="Блокировка дифференциала"/>
+    <text name="ui_FS22_EnhancedVehicle_diffTT"            text="Вкл/выкл глобальные функции блокировки дифференциала"/>
+    <text name="ui_FS22_EnhancedVehicle_hydraulicTitle"    text="Улучшенное гидравлическое управление"/>
+    <text name="ui_FS22_EnhancedVehicle_hydraulicTT"       text="Вкл/выкл глобальные функции управления гидравликой"/>
+    <text name="ui_FS22_EnhancedVehicle_parkingBrakeTitle" text="Parking brake"/>
+    <text name="ui_FS22_EnhancedVehicle_parkingBrakeTT"    text="Turn on/off global parking brake functionality"/>
 
     <text name="ui_FS22_EnhancedVehicle_HUDdiffTitle"   text="HUD: Блокировка дифференциала"/>
     <text name="ui_FS22_EnhancedVehicle_HUDdiffTT"      text="Вкл/выкл отображение на дисплее блокировки дифференциала"/>
@@ -77,6 +83,8 @@
     <text name="ui_FS22_EnhancedVehicle_HUDtempTT"      text="Вкл/выкл отображение на дисплее температура двигателя"/>
     <text name="ui_FS22_EnhancedVehicle_HUDmiscTitle"   text="HUD: Разные значения (вес)"/>
     <text name="ui_FS22_EnhancedVehicle_HUDmiscTT"      text="Вкл/выкл отображение на дисплее разные значения (вес)"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDparkTitle"   text="HUD: Parking brake"/>
+    <text name="ui_FS22_EnhancedVehicle_HUDparkTT"      text="Turn on/off the HUD display for the parking brake"/>
 
     <text name="ui_FS22_EnhancedVehicle_HUDdmgAmountLeftTitle" text="HUD: Режим значений урона"/>
     <text name="ui_FS22_EnhancedVehicle_HUDdmgAmountLeftTT"    text="Показывать значения повреждений '% осталось' или '% повреждения'"/>
@@ -93,6 +101,11 @@
 
     <text name="ui_FS22_EnhancedVehicle_visibleTracksTitle" text="Количество видимых полос"/>
     <text name="ui_FS22_EnhancedVehicle_visibleTracksTT"    text="Сколько всего показано полос(слева + справа от транспорта)"/>
+
+    <text name="ui_FS22_EnhancedVehicle_hideLinesTitle"      text="Hide lines automatically"/>
+    <text name="ui_FS22_EnhancedVehicle_hideLinesTT"         text="Specifies whether to automatically hide auxiliary and track lines"/>
+    <text name="ui_FS22_EnhancedVehicle_hideLinesAfterTitle" text="Time until lines are hidden"/>
+    <text name="ui_FS22_EnhancedVehicle_hideLinesAfterTT"    text="After how many seconds the auxiliary and track lines will be automatically hidden"/>
 
     <text name="ui_FS22_EnhancedVehicle_headlandModeTitle"   text="Режим поворотной полосы"/>
     <text name="ui_FS22_EnhancedVehicle_headlandModeTT"      text="Что должно произойти при выходе на поворотную полосу"/>

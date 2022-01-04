@@ -3,11 +3,32 @@
 --
 -- Author: Majo76
 -- email: ls22@dark-world.de
--- @Date: 30.12.2021
--- @Version: 1.0.0.0
+-- @Date: 02.01.2022
+-- @Version: 1.1.1.1
 
 --[[
 CHANGELOG
+
+2022-01-02 - V1.1.1.1
+* bugfix working width calculation (again and again...)
+
+2022-01-02 - V1.1.1.0
++ support for Fahrenheit in HUD temperature display
+* fixed headland/end of field detection (thx Stephan-S from FS22_AutoDrive)
+* small adjustment to steering force (during snap to track)
+* bugfix for cruise control issues
+
+2022-01-01 - V1.1.0.0
++ (re)added the parking brake due to high community demand ;-)
++ added option to auto-hide guide lines after x seconds after vehicle follows track
+* bugfixes for analog controler input devices (thx "Kotlett")
+
+2021-12-31 - V1.0.1.0
++ added key binding to move vehicle one track to the left/right (in direction of travel; no turning) (rctrl + insert/delete)
++ added config file option to show "spikes" on track lines also
+* reworked work width calculation (again). should now detect more attachments.
+* changing track layout (position, width, offset) is now much more "smooth" when holding key pressed
+* bugfix for display of wrong track numbers when rotating a fake track (thx "Kotlett")
 
 2021-12-30 - V1.0.0.0
 + re-added option to move track and diff HUD elements via config XML
@@ -150,9 +171,11 @@ function FS22_EnhancedVehicle:new(mission, modDirectory, modName, i18n, gui, inp
   -- some global stuff - DONT touch
   FS22_EnhancedVehicle.hud = {}
   FS22_EnhancedVehicle.fS = g_currentMission.hud.speedMeter:scalePixelToScreenHeight(12)
-  FS22_EnhancedVehicle.sections = { 'fuel', 'dmg', 'misc', 'rpm', 'temp', 'diff', 'track' }
+  FS22_EnhancedVehicle.sections = { 'fuel', 'dmg', 'misc', 'rpm', 'temp', 'diff', 'track', 'park' }
   FS22_EnhancedVehicle.actions = {}
   FS22_EnhancedVehicle.actions.global =    { 'FS22_EnhancedVehicle_MENU' }
+  FS22_EnhancedVehicle.actions.park =      { 'FS22_EnhancedVehicle_PARK',
+                                             'FS22_EnhancedVehicle_PARK_ONOFF' }
   FS22_EnhancedVehicle.actions.snap =      { 'FS22_EnhancedVehicle_SNAP_ONOFF',
                                              'FS22_EnhancedVehicle_SNAP_REVERSE',
                                              'FS22_EnhancedVehicle_SNAP_LINES',
@@ -162,6 +185,7 @@ function FS22_EnhancedVehicle:new(mission, modDirectory, modName, i18n, gui, inp
                                              'FS22_EnhancedVehicle_SNAP_TRACKP',
                                              'FS22_EnhancedVehicle_SNAP_TRACKW',
                                              'FS22_EnhancedVehicle_SNAP_TRACKO',
+                                             'FS22_EnhancedVehicle_SNAP_TRACKJ',
                                              'FS22_EnhancedVehicle_SNAP_HL_MODE',
                                              'FS22_EnhancedVehicle_SNAP_HL_DIST',
                                              'FS22_EnhancedVehicle_SNAP_ANGLE1',
@@ -177,11 +201,17 @@ function FS22_EnhancedVehicle:new(mission, modDirectory, modName, i18n, gui, inp
                                              'FS22_EnhancedVehicle_AJ_FRONT_UPDOWN',
                                              'FS22_EnhancedVehicle_AJ_FRONT_ONOFF' }
 
+  -- for key press delay
+  FS22_EnhancedVehicle.nextActionTime  = 0
+  FS22_EnhancedVehicle.deltaActionTime = 500
+  FS22_EnhancedVehicle.minActionTime   = 31.25
+
   -- some colors
   FS22_EnhancedVehicle.color = {
     black    = {       0,       0,       0, 1 },
     white    = {       1,       1,       1, 1 },
     red      = { 255/255,   0/255,   0/255, 1 },
+    darkred  = { 128/255,   0/255,   0/255, 1 },
     green    = {   0/255, 255/255,   0/255, 1 },
     blue     = {   0/255,   0/255, 255/255, 1 },
     yellow   = { 255/255, 255/255,   0/255, 1 },
@@ -201,7 +231,7 @@ function FS22_EnhancedVehicle:new(mission, modDirectory, modName, i18n, gui, inp
   if g_dedicatedServerInfo == nil then
     local file, id
     FS22_EnhancedVehicle.sounds = {}
-    for _, id in ipairs({"diff_lock", "snap_on", "snap_off"}) do
+    for _, id in ipairs({"diff_lock", "brake", "brakeOn", "brakeOff", "snap_on", "snap_off"}) do
       FS22_EnhancedVehicle.sounds[id] = createSample(id)
       file = self.modDirectory.."resources/"..id..".ogg"
       loadSample(FS22_EnhancedVehicle.sounds[id], file, false)
@@ -319,6 +349,10 @@ function FS22_EnhancedVehicle:functionEnable(name, state)
     lC:setConfigValue("global.functions", "snapIsEnabled", state)
     FS22_EnhancedVehicle.functionSnapIsEnabled = state
   end
+  if name == "park" then
+    lC:setConfigValue("global.functions", "parkingBrakeIsEnabled", state)
+    FS22_EnhancedVehicle.functionParkingBrakeIsEnabled = state
+  end
 end
 
 -- #############################################################################
@@ -336,6 +370,9 @@ function FS22_EnhancedVehicle:functionStatus(name)
   if name == "snap" then
     return(lC:getConfigValue("global.functions", "snapIsEnabled"))
   end
+  if name == "park" then
+    return(lC:getConfigValue("global.functions", "parkingBrakeIsEnabled"))
+  end
 
   return(nil)
 end
@@ -346,9 +383,10 @@ function FS22_EnhancedVehicle:activateConfig()
   -- here we will "move" our config from the libConfig internal storage to the variables we actually use
 
   -- functions
-  FS22_EnhancedVehicle.functionDiffIsEnabled      = lC:getConfigValue("global.functions", "diffIsEnabled")
-  FS22_EnhancedVehicle.functionHydraulicIsEnabled = lC:getConfigValue("global.functions", "hydraulicIsEnabled")
-  FS22_EnhancedVehicle.functionSnapIsEnabled      = lC:getConfigValue("global.functions", "snapIsEnabled")
+  FS22_EnhancedVehicle.functionDiffIsEnabled         = lC:getConfigValue("global.functions", "diffIsEnabled")
+  FS22_EnhancedVehicle.functionHydraulicIsEnabled    = lC:getConfigValue("global.functions", "hydraulicIsEnabled")
+  FS22_EnhancedVehicle.functionSnapIsEnabled         = lC:getConfigValue("global.functions", "snapIsEnabled")
+  FS22_EnhancedVehicle.functionParkingBrakeIsEnabled = lC:getConfigValue("global.functions", "parkingBrakeIsEnabled")
 
   -- globals
   FS22_EnhancedVehicle.showKeysInHelpMenu  = lC:getConfigValue("global.misc", "showKeysInHelpMenu")
@@ -357,7 +395,8 @@ function FS22_EnhancedVehicle:activateConfig()
   -- snap
   FS22_EnhancedVehicle.snap = {}
   FS22_EnhancedVehicle.snap.snapToAngle = lC:getConfigValue("snap", "snapToAngle")
-  FS22_EnhancedVehicle.snap.spikeHeight = lC:getConfigValue("snap", "spikeHeight")
+  FS22_EnhancedVehicle.snap.attachmentSpikeHeight = lC:getConfigValue("snap", "attachmentSpikeHeight")
+  FS22_EnhancedVehicle.snap.trackSpikeHeight      = lC:getConfigValue("snap", "trackSpikeHeight")
   FS22_EnhancedVehicle.snap.distanceAboveGroundVehicleMiddleLine  = lC:getConfigValue("snap", "distanceAboveGroundVehicleMiddleLine")
   FS22_EnhancedVehicle.snap.distanceAboveGroundVehicleSideLine    = lC:getConfigValue("snap", "distanceAboveGroundVehicleSideLine")
   FS22_EnhancedVehicle.snap.distanceAboveGroundAttachmentSideLine = lC:getConfigValue("snap", "distanceAboveGroundAttachmentSideLine")
@@ -370,6 +409,9 @@ function FS22_EnhancedVehicle:activateConfig()
   FS22_EnhancedVehicle.track = {}
   FS22_EnhancedVehicle.track.distanceAboveGround = lC:getConfigValue("track", "distanceAboveGround")
   FS22_EnhancedVehicle.track.numberOfTracks      = lC:getConfigValue("track", "numberOfTracks")
+  FS22_EnhancedVehicle.track.hideLines           = lC:getConfigValue("track", "hideLines")
+  FS22_EnhancedVehicle.track.hideLinesAfter      = lC:getConfigValue("track", "hideLinesAfter")
+  FS22_EnhancedVehicle.track.hideLinesAfterValue = 0
   FS22_EnhancedVehicle.track.color = { lC:getConfigValue("track.color", "red"), lC:getConfigValue("track.color", "green"), lC:getConfigValue("track.color", "blue") }
 
   -- HUD stuff
@@ -394,9 +436,10 @@ function FS22_EnhancedVehicle:resetConfig(disable)
   lC:clearConfig()
 
   -- functions
-  lC:addConfigValue("global.functions", "diffIsEnabled",      "bool", true)
-  lC:addConfigValue("global.functions", "hydraulicIsEnabled", "bool", true)
-  lC:addConfigValue("global.functions", "snapIsEnabled",      "bool", true)
+  lC:addConfigValue("global.functions", "diffIsEnabled",         "bool", true)
+  lC:addConfigValue("global.functions", "hydraulicIsEnabled",    "bool", true)
+  lC:addConfigValue("global.functions", "snapIsEnabled",         "bool", true)
+  lC:addConfigValue("global.functions", "parkingBrakeIsEnabled", "bool", true)
 
   -- globals
   lC:addConfigValue("global.misc", "showKeysInHelpMenu", "bool",   true)
@@ -404,7 +447,8 @@ function FS22_EnhancedVehicle:resetConfig(disable)
 
   -- snap
   lC:addConfigValue("snap", "snapToAngle", "float", 10.0)
-  lC:addConfigValue("snap", "spikeHeight", "float", 0.75)
+  lC:addConfigValue("snap", "attachmentSpikeHeight", "float", 0.75)
+  lC:addConfigValue("snap", "trackSpikeHeight",      "float", 0)
   lC:addConfigValue("snap", "distanceAboveGroundVehicleMiddleLine",  "float", 0.3)
   lC:addConfigValue("snap", "distanceAboveGroundVehicleSideLine",    "float", 0.25)
   lC:addConfigValue("snap", "distanceAboveGroundAttachmentSideLine", "float", 0.20)
@@ -421,6 +465,8 @@ function FS22_EnhancedVehicle:resetConfig(disable)
   -- track
   lC:addConfigValue("track",       "distanceAboveGround", "float", 0.15)
   lC:addConfigValue("track",       "numberOfTracks",      "int",   5)
+  lC:addConfigValue("track",       "hideLines",           "bool",  false)
+  lC:addConfigValue("track",       "hideLinesAfter",      "int",   5)
   lC:addConfigValue("track.color", "red",                 "float", 255/255)
   lC:addConfigValue("track.color", "green",               "float", 150/255)
   lC:addConfigValue("track.color", "blue",                "float", 0/255)
@@ -452,6 +498,11 @@ function FS22_EnhancedVehicle:resetConfig(disable)
   lC:addConfigValue("hud.diff", "enabled", "bool", true)
   lC:addConfigValue("hud.diff", "offsetX", "int", 0)
   lC:addConfigValue("hud.diff", "offsetY", "int", 0)
+
+  -- park
+  lC:addConfigValue("hud.park", "enabled", "bool", true)
+  lC:addConfigValue("hud.park", "offsetX", "int", 0)
+  lC:addConfigValue("hud.park", "offsetY", "int", 0)
 
   -- HUD position for dmg/fuel
   lC:addConfigValue("hud", "dmgfuelPosition", "int", 2)
@@ -486,11 +537,13 @@ function FS22_EnhancedVehicle:onPostLoad(savegame)
   --  10 - track dZ
   --  11 - track snapx
   --  12 - track snapz
+  --  13 - parking brake on
+  --  14 - parking brake function enabled
   if self.isServer then
     if self.vData == nil then
       self.vData = {}
-      self.vData.is   = {  true,  true, -1, 1.0,  true,  true, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 }
-      self.vData.want = { false, false,  1, 0.0, false, false, 0,   0,   0,   0,   0,   0 }
+      self.vData.is   = {  true,  true, -1, 1.0,  true,  true, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, true, true }
+      self.vData.want = { false, false,  1, 0.0, false, false, 0,   0,   0,   0,   0,   0,   false, false }
       self.vData.torqueRatio   = { 0.5, 0.5, 0.5 }
       self.vData.maxSpeedRatio = { 1.0, 1.0, 1.0 }
       self.vData.rot = 0.0
@@ -521,7 +574,7 @@ function FS22_EnhancedVehicle:onPostLoad(savegame)
       local key     = savegame.key ..".FS22_EnhancedVehicle.EnhancedVehicle"
 
       local _data
-      for _, _data in pairs( { {1, 'frontDiffIsOn'}, {2, 'backDiffIsOn'}, {3, 'driveMode'} }) do
+      for _, _data in pairs( { {1, 'frontDiffIsOn'}, {2, 'backDiffIsOn'}, {3, 'driveMode'}, {13, 'parkingBrakeIsOn'}, {14, 'parkingBrakeIsEnabled'} }) do
         local idx = _data[1]
         local _v
         if idx == 3 then
@@ -556,9 +609,11 @@ end
 function FS22_EnhancedVehicle:saveToXMLFile(xmlFile, key)
   if debug > 1 then print("-> " .. myName .. ": saveToXMLFile" .. mySelf(self)) end
 
-  setXMLBool(xmlFile.handle, key.."#frontDiffIsOn", self.vData.is[1])
-  setXMLBool(xmlFile.handle, key.."#backDiffIsOn",  self.vData.is[2])
-  setXMLInt(xmlFile.handle, key.."#driveMode",      self.vData.is[3])
+  setXMLBool(xmlFile.handle, key.."#frontDiffIsOn",    self.vData.is[1])
+  setXMLBool(xmlFile.handle, key.."#backDiffIsOn",     self.vData.is[2])
+  setXMLInt(xmlFile.handle,  key.."#driveMode",        self.vData.is[3])
+  setXMLBool(xmlFile.handle, key.."#parkingBrakeIsOn",      self.vData.is[13])
+  setXMLBool(xmlFile.handle, key.."#parkingBrakeIsEnabled", self.vData.is[14])
 end
 
 -- #############################################################################
@@ -590,6 +645,8 @@ function FS22_EnhancedVehicle:onReadStream(streamId, connection)
   self.vData.is[10] = streamReadFloat32(streamId) -- snap track dZ
   self.vData.is[11] = streamReadFloat32(streamId) -- snap track snap x
   self.vData.is[12] = streamReadFloat32(streamId) -- snap track snap z
+  self.vData.is[13] = streamReadBool(streamId)    -- parking brake on
+  self.vData.is[14] = streamReadBool(streamId)    -- parking brake enabled
 
   if self.isClient then
     self.vData.want = { unpack(self.vData.is) }
@@ -618,6 +675,8 @@ function FS22_EnhancedVehicle:onWriteStream(streamId, connection)
     streamWriteFloat32(streamId, self.vData.want[10])
     streamWriteFloat32(streamId, self.vData.want[11])
     streamWriteFloat32(streamId, self.vData.want[12])
+    streamWriteBool(streamId,    self.vData.want[13])
+    streamWriteBool(streamId,    self.vData.want[14])
   else
     streamWriteBool(streamId,    self.vData.is[1])
     streamWriteBool(streamId,    self.vData.is[2])
@@ -631,6 +690,8 @@ function FS22_EnhancedVehicle:onWriteStream(streamId, connection)
     streamWriteFloat32(streamId, self.vData.is[10])
     streamWriteFloat32(streamId, self.vData.is[11])
     streamWriteFloat32(streamId, self.vData.is[12])
+    streamWriteBool(streamId,    self.vData.is[13])
+    streamWriteBool(streamId,    self.vData.is[14])
   end
 end
 
@@ -709,11 +770,11 @@ function FS22_EnhancedVehicle:onUpdate(dt)
               if debug > 1 then print("Headland: disable cruise control") end
               if self.spec_drivable ~= nil and self.spec_drivable.cruiseControl ~= nil then
                 if self.spec_drivable.cruiseControl.state ~= Drivable.CRUISECONTROL_STATE_OFF then
-                  self.spec_drivable:setCruiseControlState(Drivable.CRUISECONTROL_STATE_OFF)
+                  self:setCruiseControlState(Drivable.CRUISECONTROL_STATE_OFF)
                   -- update server/clients
-                  if not self.isServer then
-                    g_client:getServerConnection():sendEvent(SetCruiseControlStateEvent.new(self, Drivable.CRUISECONTROL_STATE_OFF))
-                  end
+--                  if not self.isServer then
+--                    g_client:getServerConnection():sendEvent(SetCruiseControlStateEvent.new(self, Drivable.CRUISECONTROL_STATE_OFF))
+--                  end
                 end
               end
             end
@@ -851,12 +912,36 @@ function FS22_EnhancedVehicle:onUpdate(dt)
       self.vData.is[3] = self.vData.want[3]
     end
 
+    -- park brake on
+    if self.vData.is[13] ~= self.vData.want[13] then
+      if FS22_EnhancedVehicle.functionParkingBrakeIsEnabled then
+        if self.vData.want[13] then
+          if debug > 0 then print("--> ("..self.rootNode..") changed park on to: ON") end
+        else
+          if debug > 0 then print("--> ("..self.rootNode..") changed park on to: OFF") end
+        end
+      end
+      self.vData.is[13] = self.vData.want[13]
+    end
+
+    -- park brake enabled
+    if self.vData.is[14] ~= self.vData.want[14] then
+      if FS22_EnhancedVehicle.functionParkingBrakeIsEnabled then
+        if self.vData.want[14] then
+          if debug > 0 then print("--> ("..self.rootNode..") changed park enable to: ON") end
+        else
+          if debug > 0 then print("--> ("..self.rootNode..") changed park enable to: OFF") end
+        end
+      end
+      self.vData.is[14] = self.vData.want[14]
+    end
+
   end
 end
 
 -- #############################################################################
 
-function FS22_EnhancedVehicle:drawVisualizationLines(_step, _segments, _x, _y, _z, _dX, _dZ, _length, _colorR, _colorG, _colorB, _addY, _spikes)
+function FS22_EnhancedVehicle:drawVisualizationLines(_step, _segments, _x, _y, _z, _dX, _dZ, _length, _colorR, _colorG, _colorB, _addY, _spikes, _spikeHeight)
   _spikes = _spikes or false
 
   -- our draw one line (recursive) function
@@ -868,10 +953,10 @@ function FS22_EnhancedVehicle:drawVisualizationLines(_step, _segments, _x, _y, _
   drawDebugLine(p1.x, p1.y, p1.z, _colorR, _colorG, _colorB, p2.x, p2.y, p2.z, _colorR, _colorG, _colorB)
 
   if _spikes then
-    drawDebugLine(p2.x, p2.y, p2.z, _colorR, _colorG, _colorB, p2.x, p2.y + FS22_EnhancedVehicle.snap.spikeHeight, p2.z, _colorR, _colorG, _colorB)
+    drawDebugLine(p2.x, p2.y, p2.z, _colorR, _colorG, _colorB, p2.x, p2.y + _spikeHeight, p2.z, _colorR, _colorG, _colorB)
   end
 
-  FS22_EnhancedVehicle:drawVisualizationLines(_step + 1, _segments, p2.x, p2.y, p2.z, _dX, _dZ, _length, _colorR, _colorG, _colorB, _addY, _spikes)
+  FS22_EnhancedVehicle:drawVisualizationLines(_step + 1, _segments, p2.x, p2.y, p2.z, _dX, _dZ, _length, _colorR, _colorG, _colorB, _addY, _spikes, _spikeHeight)
 end
 
 -- #############################################################################
@@ -894,22 +979,37 @@ function FS22_EnhancedVehicle:onDraw()
     -- guide lines
     if FS22_EnhancedVehicle.functionSnapIsEnabled and self.vData.snaplines then
 
+      -- for debuging headland detection trigger
+--      if self.vData.hlx ~= nil and self.vData.hlz ~= nil then
+--        FS22_EnhancedVehicle:drawVisualizationLines(1, 2, self.vData.hlx, self.vData.py, self.vData.hlz, 0, 0, 1, (self.vData.isOnField and 1 or 0), (self.vData.isOnField and 1 or 0), 1, 0, true, 5)
+--      end
+
+      -- should we hide lines?
+      local _showLines = true
+      if FS22_EnhancedVehicle.track.hideLines then
+        if self.vData.is[5] and g_currentMission.time >= FS22_EnhancedVehicle.track.hideLinesAfterValue then
+          _showLines = false
+        end
+      end
+
       -- draw helper line in front of vehicle
-      local p1 = { x = self.vData.px, y = self.vData.py, z = self.vData.pz }
-      p1.y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, p1.x, 0, p1.z) + FS22_EnhancedVehicle.snap.distanceAboveGroundVehicleMiddleLine
-      FS22_EnhancedVehicle:drawVisualizationLines(1,
-        8,
-        p1.x,
-        p1.y,
-        p1.z,
-        self.vData.dirX,
-        self.vData.dirZ,
-        4,
-        FS22_EnhancedVehicle.snap.colorVehicleMiddleLine[1], FS22_EnhancedVehicle.snap.colorVehicleMiddleLine[2], FS22_EnhancedVehicle.snap.colorVehicleMiddleLine[3],
-        FS22_EnhancedVehicle.snap.distanceAboveGroundVehicleMiddleLine)
+      if _showLines then
+        local p1 = { x = self.vData.px, y = self.vData.py, z = self.vData.pz }
+        p1.y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, p1.x, 0, p1.z) + FS22_EnhancedVehicle.snap.distanceAboveGroundVehicleMiddleLine
+        FS22_EnhancedVehicle:drawVisualizationLines(1,
+          8,
+          p1.x,
+          p1.y,
+          p1.z,
+          self.vData.dirX,
+          self.vData.dirZ,
+          4,
+          FS22_EnhancedVehicle.snap.colorVehicleMiddleLine[1], FS22_EnhancedVehicle.snap.colorVehicleMiddleLine[2], FS22_EnhancedVehicle.snap.colorVehicleMiddleLine[3],
+          FS22_EnhancedVehicle.snap.distanceAboveGroundVehicleMiddleLine)
+      end
 
       -- draw attachment helper lines
-      if self.vData.impl ~= nil and self.vData.impl.workWidth > 0 then
+      if self.vData.impl ~= nil and self.vData.impl.workWidth > 0 and _showLines then
 
         -- left line beside vehicle
         local p1 = { x = self.vData.px, y = self.vData.py, z = self.vData.pz }
@@ -925,7 +1025,7 @@ function FS22_EnhancedVehicle:onDraw()
           self.vData.dirZ,
           4,
           FS22_EnhancedVehicle.snap.colorVehicleSideLine[1], FS22_EnhancedVehicle.snap.colorVehicleSideLine[2], FS22_EnhancedVehicle.snap.colorVehicleSideLine[3],
-          FS22_EnhancedVehicle.snap.distanceAboveGroundVehicleSideLine, true)
+          FS22_EnhancedVehicle.snap.distanceAboveGroundVehicleSideLine, (FS22_EnhancedVehicle.snap.attachmentSpikeHeight > 0), FS22_EnhancedVehicle.snap.attachmentSpikeHeight)
 
         -- right line beside vehicle
         local p1 = { x = self.vData.px, y = self.vData.py, z = self.vData.pz }
@@ -941,43 +1041,47 @@ function FS22_EnhancedVehicle:onDraw()
           self.vData.dirZ,
           4,
           FS22_EnhancedVehicle.snap.colorVehicleSideLine[1], FS22_EnhancedVehicle.snap.colorVehicleSideLine[2], FS22_EnhancedVehicle.snap.colorVehicleSideLine[3],
-          FS22_EnhancedVehicle.snap.distanceAboveGroundVehicleSideLine, true)
+          FS22_EnhancedVehicle.snap.distanceAboveGroundVehicleSideLine, (FS22_EnhancedVehicle.snap.attachmentSpikeHeight > 0), FS22_EnhancedVehicle.snap.attachmentSpikeHeight)
 
         -- draw attachment left helper line
-        p1.x, p1.y, p1.z = localToWorld(self.vData.impl.left.marker, 0, 0, 0)
-        p1.y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, p1.x, 0, p1.z) + FS22_EnhancedVehicle.snap.distanceAboveGroundAttachmentSideLine
-        local _dx, _, _dz = localDirectionToWorld(self.vData.impl.left.marker, 0, 0, 1)
-        local _length = MathUtil.vector2Length(_dx, _dz);
-        FS22_EnhancedVehicle:drawVisualizationLines(1,
-          4,
-          p1.x,
-          p1.y,
-          p1.z,
-          _dx / _length,
-          _dz / _length,
-          4,
-          FS22_EnhancedVehicle.snap.colorAttachmentSideLine[1], FS22_EnhancedVehicle.snap.colorAttachmentSideLine[2], FS22_EnhancedVehicle.snap.colorAttachmentSideLine[3],
-          FS22_EnhancedVehicle.snap.distanceAboveGroundAttachmentSideLine)
+        if self.vData.impl.left.marker ~= nil then
+          p1.x, p1.y, p1.z = localToWorld(self.vData.impl.left.marker, 0, 0, 0)
+          p1.y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, p1.x, 0, p1.z) + FS22_EnhancedVehicle.snap.distanceAboveGroundAttachmentSideLine
+          local _dx, _, _dz = localDirectionToWorld(self.vData.impl.left.marker, 0, 0, 1)
+          local _length = MathUtil.vector2Length(_dx, _dz);
+          FS22_EnhancedVehicle:drawVisualizationLines(1,
+            4,
+            p1.x,
+            p1.y,
+            p1.z,
+            _dx / _length,
+            _dz / _length,
+            4,
+            FS22_EnhancedVehicle.snap.colorAttachmentSideLine[1], FS22_EnhancedVehicle.snap.colorAttachmentSideLine[2], FS22_EnhancedVehicle.snap.colorAttachmentSideLine[3],
+            FS22_EnhancedVehicle.snap.distanceAboveGroundAttachmentSideLine)
+        end
 
         -- draw attachment right helper line
-        p1.x, p1.y, p1.z = localToWorld(self.vData.impl.right.marker, 0, 0, 0)
-        p1.y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, p1.x, 0, p1.z) + FS22_EnhancedVehicle.snap.distanceAboveGroundAttachmentSideLine
-        local _dx, _, _dz = localDirectionToWorld(self.vData.impl.right.marker, 0, 0, 1)
-        local _length = MathUtil.vector2Length(_dx, _dz);
-        FS22_EnhancedVehicle:drawVisualizationLines(1,
-          4,
-          p1.x,
-          p1.y,
-          p1.z,
-          _dx / _length,
-          _dz / _length,
-          4,
-          FS22_EnhancedVehicle.snap.colorAttachmentSideLine[1], FS22_EnhancedVehicle.snap.colorAttachmentSideLine[2], FS22_EnhancedVehicle.snap.colorAttachmentSideLine[3],
-          FS22_EnhancedVehicle.snap.distanceAboveGroundAttachmentSideLine)
+        if self.vData.impl.right.marker ~= nil then
+          p1.x, p1.y, p1.z = localToWorld(self.vData.impl.right.marker, 0, 0, 0)
+          p1.y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, p1.x, 0, p1.z) + FS22_EnhancedVehicle.snap.distanceAboveGroundAttachmentSideLine
+          local _dx, _, _dz = localDirectionToWorld(self.vData.impl.right.marker, 0, 0, 1)
+          local _length = MathUtil.vector2Length(_dx, _dz);
+          FS22_EnhancedVehicle:drawVisualizationLines(1,
+            4,
+            p1.x,
+            p1.y,
+            p1.z,
+            _dx / _length,
+            _dz / _length,
+            4,
+            FS22_EnhancedVehicle.snap.colorAttachmentSideLine[1], FS22_EnhancedVehicle.snap.colorAttachmentSideLine[2], FS22_EnhancedVehicle.snap.colorAttachmentSideLine[3],
+            FS22_EnhancedVehicle.snap.distanceAboveGroundAttachmentSideLine)
+        end
       end
 
       -- draw our tracks
-      if self.vData.track.isVisible and self.vData.track.isCalculated then
+      if self.vData.track.isVisible and self.vData.track.isCalculated and _showLines then
         -- calculate track number in direction left-right and forward-backward
         -- with current track orientation
         local dotLR = dx * -self.vData.track.origin.dZ + dz * self.vData.track.origin.dX
@@ -995,7 +1099,7 @@ function FS22_EnhancedVehicle:onDraw()
         self.vData.track.trackLR = dotLR / self.vData.track.workWidth
         self.vData.track.trackFB = dotFB / self.vData.track.workWidth
 
-        -- do we move in original grid oriontation direction?
+        -- do we move in original grid orientation direction?
         self.vData.track.drivingDir = self.vData.track.trackLR - self.vData.track.originalTrackLR
         if self.vData.track.drivingDir == 0 then self.vData.track.drivingDir = 1 else self.vData.track.drivingDir = -1 end
 
@@ -1082,7 +1186,7 @@ function FS22_EnhancedVehicle:onDraw()
             FS22_EnhancedVehicle.track.color[1],
             FS22_EnhancedVehicle.track.color[2],
             FS22_EnhancedVehicle.track.color[3],
-            FS22_EnhancedVehicle.track.distanceAboveGround)
+            FS22_EnhancedVehicle.track.distanceAboveGround, (FS22_EnhancedVehicle.snap.trackSpikeHeight > 0), FS22_EnhancedVehicle.snap.trackSpikeHeight)
 
           -- coordinates for track number text
           local textX = self.vData.track.origin.px + (-self.vData.track.origin.originaldZ * (trackLRText * self.vData.track.workWidth)) - ( self.vData.track.origin.dX * (trackTextFB * self.vData.track.workWidth))
@@ -1097,7 +1201,7 @@ function FS22_EnhancedVehicle:onDraw()
             if Round(self.vData.track.originalTrackLR, 0) + self.vData.track.deltaTrack == _curTrack then
               setTextBold(true)
               if self.vData.is[5] then
-                setTextColor(0, 0.8, 0, 1)
+                setTextColor(0, 0.7, 0, 1)
               else
                 setTextColor(1, 1, 1, 1)
               end
@@ -1219,23 +1323,29 @@ function FS22_EnhancedVehicle:onRegisterActionEvents(isSelected, isOnActiveVehic
     for _, v in ipairs(FS22_EnhancedVehicle.actions.hydraulic) do
       table.insert(actionList, v)
     end
+    for _, v in ipairs(FS22_EnhancedVehicle.actions.park) do
+      table.insert(actionList, v)
+    end
 
     -- attach our actions
     for _ ,actionName in pairs(actionList) do
---      if actionName == "FS22_EnhancedVehicle_SNAP_TRACKP" or actionName == "FS22_EnhancedVehicle_SNAP_TRACKW" or actionName == "FS22_EnhancedVehicle_SNAP_TRACKO" then
---        _, eventName = InputBinding.registerActionEvent(g_inputBinding, actionName, self, FS22_EnhancedVehicle.onActionCall, false, true, true, true)
---      else
+      if actionName == "FS22_EnhancedVehicle_SNAP_TRACKP" or actionName == "FS22_EnhancedVehicle_SNAP_TRACKW" or actionName == "FS22_EnhancedVehicle_SNAP_TRACKO" then
+        _, eventName = InputBinding.registerActionEvent(g_inputBinding, actionName, self, FS22_EnhancedVehicle.onActionCall, false, true, true, true)
+        _, eventName = InputBinding.registerActionEvent(g_inputBinding, actionName, self, FS22_EnhancedVehicle.onActionCallUp, true, false, false, true)
+      else
         _, eventName = InputBinding.registerActionEvent(g_inputBinding, actionName, self, FS22_EnhancedVehicle.onActionCall, false, true, false, true)
---      end
+      end
       -- help menu priorization
       if g_inputBinding ~= nil and g_inputBinding.events ~= nil and g_inputBinding.events[eventName] ~= nil then
         if actionName == "FS22_EnhancedVehicle_MENU" or
+           actionName == "FS22_EnhancedVehicle_PARK" or
            actionName == "FS22_EnhancedVehicle_SNAP_ONOFF" or
            actionName == "FS22_EnhancedVehicle_SNAP_REVERSE" or
            actionName == "FS22_EnhancedVehicle_SNAP_LINES" then
           g_inputBinding.events[eventName].displayPriority = GS_PRIO_VERY_LOW
         else
           g_inputBinding.events[eventName].displayIsVisible = false
+          g_inputBinding.events[eventName].displayPriority = GS_PRIO_VERY_LOW
         end
       end
     end
@@ -1246,6 +1356,16 @@ function FS22_EnhancedVehicle:onRegisterActionEvents(isSelected, isOnActiveVehic
 --GS_PRIO_NORMAL = 3
 --GS_PRIO_LOW = 4
 --GS_PRIO_VERY_LOW = 5
+end
+
+-- #############################################################################
+
+function FS22_EnhancedVehicle:onActionCallUp(actionName, keyStatus, arg4, arg5, arg6)
+  if debug > 1 then print("-> " .. myName .. ": onActionCallUp " .. actionName .. ", keyStatus: " .. keyStatus .. mySelf(self)) end
+
+  -- reset key press delay
+  FS22_EnhancedVehicle.nextActionTime  = 0
+  FS22_EnhancedVehicle.deltaActionTime = 500
 end
 
 -- #############################################################################
@@ -1416,10 +1536,38 @@ function FS22_EnhancedVehicle:onActionCall(actionName, keyStatus, arg4, arg5, ar
     -- toggle snaplines on/off
     self.vData.snaplines = not self.vData.snaplines
 
-    -- calculate work width
     if self.vData.snaplines then
+      -- calculate work width
       FS22_EnhancedVehicle:enumerateImplements(self)
+
+      -- auto-hide lines
+      if FS22_EnhancedVehicle.track.hideLines then
+        FS22_EnhancedVehicle.track.hideLinesAfterValue = g_currentMission.time + 1000 * FS22_EnhancedVehicle.track.hideLinesAfter
+      end
     end
+  elseif FS22_EnhancedVehicle.functionParkingBrakeIsEnabled and actionName == "FS22_EnhancedVehicle_PARK_ONOFF" then
+    if FS22_EnhancedVehicle.sounds["brake"] ~= nil and FS22_EnhancedVehicle.soundIsOn and g_dedicatedServerInfo == nil then
+      playSample(FS22_EnhancedVehicle.sounds["brake"], 1, 0.5, 0, 0, 0)
+    end
+    -- parking brake enable/disable
+    self.vData.want[14] = not self.vData.want[14]
+    if self.isClient and not self.isServer then
+      self.vData.is[14] = self.vData.want[14]
+    end
+    FS22_EnhancedVehicle_Event.sendEvent(self, unpack(self.vData.want))
+  elseif FS22_EnhancedVehicle.functionParkingBrakeIsEnabled and actionName == "FS22_EnhancedVehicle_PARK" and self.vData.is[14] then
+    -- parking brake on/off
+    if self.vData.is[13] and FS22_EnhancedVehicle.sounds["brakeOff"] ~= nil and FS22_EnhancedVehicle.soundIsOn and g_dedicatedServerInfo == nil then
+      playSample(FS22_EnhancedVehicle.sounds["brakeOff"], 1, 0.1, 0, 0, 0)
+    end
+    if not self.vData.is[13] and FS22_EnhancedVehicle.sounds["brakeOn"] ~= nil and FS22_EnhancedVehicle.soundIsOn and g_dedicatedServerInfo == nil then
+      playSample(FS22_EnhancedVehicle.sounds["brakeOn"], 1, 0.1, 0, 0, 0)
+    end
+    self.vData.want[13] = not self.vData.want[13]
+    if self.isClient and not self.isServer then
+      self.vData.is[13] = self.vData.want[13]
+    end
+    FS22_EnhancedVehicle_Event.sendEvent(self, unpack(self.vData.want))
   end
 
   -- snap/track assisstant
@@ -1432,6 +1580,11 @@ function FS22_EnhancedVehicle:onActionCall(actionName, keyStatus, arg4, arg5, ar
           playSample(FS22_EnhancedVehicle.sounds["snap_on"], 1, 0.1, 0, 0, 0)
         end
         self.vData.want[5] = true
+
+        -- auto-hide lines
+        if FS22_EnhancedVehicle.track.hideLines then
+          FS22_EnhancedVehicle.track.hideLinesAfterValue = g_currentMission.time + 1000 * FS22_EnhancedVehicle.track.hideLinesAfter
+        end
 
         -- calculate snap angle
         local snapToAngle = FS22_EnhancedVehicle.snap.snapToAngle
@@ -1477,6 +1630,7 @@ function FS22_EnhancedVehicle:onActionCall(actionName, keyStatus, arg4, arg5, ar
           playSample(FS22_EnhancedVehicle.sounds["snap_off"], 1, 0.1, 0, 0, 0)
         end
         self.vData.want[5] = false
+        self.vData.want[6] = false
       end
       _snap = true
     elseif actionName == "FS22_EnhancedVehicle_SNAP_REVERSE" then
@@ -1502,12 +1656,12 @@ function FS22_EnhancedVehicle:onActionCall(actionName, keyStatus, arg4, arg5, ar
     elseif actionName == "FS22_EnhancedVehicle_SNAP_ANGLE1" then
       -- 1°
       if self.vData.is[5] then
-        self.vData.want[4] = Round(self.vData.is[4] + 1 * keyStatus, 0)
+        self.vData.want[4] = Round(self.vData.is[4] + 1 * (keyStatus >= 0 and 1 or -1), 0)
         if self.vData.want[4] >= 360 then self.vData.want[4] = self.vData.want[4] - 360 end
         if self.vData.want[4] < 0 then self.vData.want[4] = self.vData.want[4] + 360 end
         -- if track is enabled -> also rotate track
         if self.vData.track.isVisible and self.vData.track.isCalculated then
-          FS22_EnhancedVehicle:updateTrack(self, true, Angle2ModAngle(self.vData.is[9], self.vData.is[10], 1 * keyStatus), true, 0, true, 0, 0)
+          FS22_EnhancedVehicle:updateTrack(self, true, Angle2ModAngle(self.vData.is[9], self.vData.is[10], 1 * (keyStatus >= 0 and 1 or -1)), true, 0, true, 0, 0)
         end
         _snap = true
       else
@@ -1516,12 +1670,12 @@ function FS22_EnhancedVehicle:onActionCall(actionName, keyStatus, arg4, arg5, ar
     elseif actionName == "FS22_EnhancedVehicle_SNAP_ANGLE2" then
     -- 45°
       if self.vData.is[5] then
-        self.vData.want[4] = Round(self.vData.is[4] + 45 * keyStatus, 0)
+        self.vData.want[4] = Round(self.vData.is[4] + 45 * (keyStatus >= 0 and 1 or -1), 0)
         if self.vData.want[4] >= 360 then self.vData.want[4] = self.vData.want[4] - 360 end
         if self.vData.want[4] < 0 then self.vData.want[4] = self.vData.want[4] + 360 end
         -- if track is enabled -> also rotate track
         if self.vData.track.isVisible and self.vData.track.isCalculated then
-          FS22_EnhancedVehicle:updateTrack(self, true, Angle2ModAngle(self.vData.is[9], self.vData.is[10], 45 * keyStatus), true, 0, true, 0, 0)
+          FS22_EnhancedVehicle:updateTrack(self, true, Angle2ModAngle(self.vData.is[9], self.vData.is[10], 45 * (keyStatus >= 0 and 1 or -1)), true, 0, true, 0, 0)
         end
         _snap = true
       else
@@ -1530,12 +1684,12 @@ function FS22_EnhancedVehicle:onActionCall(actionName, keyStatus, arg4, arg5, ar
     elseif actionName == "FS22_EnhancedVehicle_SNAP_ANGLE3" then
       -- 90°
       if self.vData.is[5] then
-        self.vData.want[4] = Round(self.vData.is[4] + 90 * keyStatus, 0)
+        self.vData.want[4] = Round(self.vData.is[4] + 90 * (keyStatus >= 0 and 1 or -1), 0)
         if self.vData.want[4] >= 360 then self.vData.want[4] = self.vData.want[4] - 360 end
         if self.vData.want[4] < 0 then self.vData.want[4] = self.vData.want[4] + 360 end
         -- if track is enabled -> also rotate track
         if self.vData.track.isVisible and self.vData.track.isCalculated then
-          FS22_EnhancedVehicle:updateTrack(self, true, Angle2ModAngle(self.vData.is[9], self.vData.is[10], 90 * keyStatus), true, 0, true, 0, 0)
+          FS22_EnhancedVehicle:updateTrack(self, true, Angle2ModAngle(self.vData.is[9], self.vData.is[10], 90 * (keyStatus >= 0 and 1 or -1)), true, 0, true, 0, 0)
         end
         _snap = true
       else
@@ -1544,22 +1698,43 @@ function FS22_EnhancedVehicle:onActionCall(actionName, keyStatus, arg4, arg5, ar
     elseif actionName == "FS22_EnhancedVehicle_SNAP_TRACK" then
       -- delta track
       if self.vData.track.isVisible and self.vData.track.isCalculated then
-        self.vData.track.deltaTrack = Between(self.vData.track.deltaTrack + keyStatus, -5, 5)
+        self.vData.track.deltaTrack = Between(self.vData.track.deltaTrack + (keyStatus >= 0 and 1 or -1), -5, 5)
       end
     elseif actionName == "FS22_EnhancedVehicle_SNAP_TRACKP" then
     -- track position
       if self.vData.track.isVisible and self.vData.track.isCalculated then
-        FS22_EnhancedVehicle:updateTrack(self, false, -1, false, 0.1 * keyStatus, true, 0, 0)
+        if g_currentMission.time > FS22_EnhancedVehicle.nextActionTime then
+          FS22_EnhancedVehicle.nextActionTime = g_currentMission.time + FS22_EnhancedVehicle.deltaActionTime
+          if FS22_EnhancedVehicle.deltaActionTime >= FS22_EnhancedVehicle.minActionTime then FS22_EnhancedVehicle.deltaActionTime = FS22_EnhancedVehicle.deltaActionTime * 0.5 end
+          FS22_EnhancedVehicle:updateTrack(self, false, -1, false, 0.1 * (keyStatus >= 0 and 1 or -1), true, 0, 0)
+        end
       end
     elseif actionName == "FS22_EnhancedVehicle_SNAP_TRACKW" then
     -- track width
       if self.vData.track.isVisible and self.vData.track.isCalculated then
-        FS22_EnhancedVehicle:updateTrack(self, false, -1, false, 0, false, 0, 0, 0.1 * keyStatus)
+        if g_currentMission.time > FS22_EnhancedVehicle.nextActionTime then
+          FS22_EnhancedVehicle.nextActionTime = g_currentMission.time + FS22_EnhancedVehicle.deltaActionTime
+          if FS22_EnhancedVehicle.deltaActionTime >= FS22_EnhancedVehicle.minActionTime then FS22_EnhancedVehicle.deltaActionTime = FS22_EnhancedVehicle.deltaActionTime * 0.5 end
+          FS22_EnhancedVehicle:updateTrack(self, false, -1, false, 0, false, 0, 0, 0.1 * (keyStatus >= 0 and 1 or -1))
+        end
       end
     elseif actionName == "FS22_EnhancedVehicle_SNAP_TRACKO" then
     -- track offset
       if self.vData.track.isVisible and self.vData.track.isCalculated then
-        FS22_EnhancedVehicle:updateTrack(self, false, -1, false, 0, false, 0, 0.05 * keyStatus)
+        if g_currentMission.time > FS22_EnhancedVehicle.nextActionTime then
+          FS22_EnhancedVehicle.nextActionTime = g_currentMission.time + FS22_EnhancedVehicle.deltaActionTime
+          if FS22_EnhancedVehicle.deltaActionTime >= FS22_EnhancedVehicle.minActionTime then FS22_EnhancedVehicle.deltaActionTime = FS22_EnhancedVehicle.deltaActionTime * 0.5 end
+          FS22_EnhancedVehicle:updateTrack(self, false, -1, false, 0, false, 0, 0.05 * (keyStatus >= 0 and 1 or -1))
+        end
+      end
+    elseif actionName == "FS22_EnhancedVehicle_SNAP_TRACKJ" then
+    -- track jump
+      if self.vData.is[5] and self.vData.is[6] then
+        if self.vData.track.isVisible and self.vData.track.isCalculated and self.vData.is[5] and self.vData.track.drivingDir ~= nil then
+          FS22_EnhancedVehicle:updateTrack(self, false, -1, false, 0, true, 1 * (keyStatus >= 0 and 1 or -1) * self.vData.track.drivingDir, 0)
+        end
+      else
+        g_currentMission:showBlinkingWarning(g_i18n:getText("global_FS22_EnhancedVehicle_snapNotEnabled"), 4000)
       end
     elseif actionName == "FS22_EnhancedVehicle_SNAP_GRID_ONOFF" then
     -- track display on/off
@@ -1602,7 +1777,7 @@ function FS22_EnhancedVehicle:onActionCall(actionName, keyStatus, arg4, arg5, ar
           _i = _i + 1
         end
       end
-      _state = _state + keyStatus
+      _state = _state + (keyStatus >= 0 and 1 or -1)
       if _state > #FS22_EnhancedVehicle.hl_distances then _state = 0 end
       if _state < 0 then _state = #FS22_EnhancedVehicle.hl_distances end
       self.vData.track.headlandDistance = FS22_EnhancedVehicle.hl_distances[_state]
@@ -1633,10 +1808,21 @@ function FS22_EnhancedVehicle:getHeadlandInfo(self)
     distance = self.vData.track.workWidth
   end
 
-  x = self.vData.px + (self.vData.dirX * distance)
-  z = self.vData.pz + (self.vData.dirZ * distance)
-  local _density = getDensityAtWorldPos(g_currentMission.terrainDetailId, x, 0, z)
-  local isOnField = _density ~= 0
+  local isOnField = true
+  -- look ahead/behind
+  local x = self.vData.px + (self.vData.dirX * distance)
+  local z = self.vData.pz + (self.vData.dirZ * distance)
+  local y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, x, 1, z)
+
+  local groundTypeMapId, groundTypeFirstChannel, groundTypeNumChannels = g_currentMission.fieldGroundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
+  local _density = getDensityAtWorldPos(groundTypeMapId, x, y, z)
+  local _densityType = bitAND(bitShiftRight(_density, groundTypeFirstChannel), 2^groundTypeNumChannels - 1)
+  isOnField = isOnField and (_densityType ~= g_currentMission.grassValue and _densityType ~= 0)
+
+  -- for debugging
+--  self.vData.hlx = x
+--  self.vData.hlz = z
+--  self.vData.isOnField = isOnField
 
   return(isOnField)
 end
@@ -1668,6 +1854,7 @@ function FS22_EnhancedVehicle:updateTrack(self, updateAngle, updateAngleValue, u
     if self.vData.track.workWidth == nil then
       if self.vData.track.forceFake then
         self.vData.track.workWidth = 6
+        self.vData.impl.left.px = 3
       else
         self.vData.track.workWidth = self.vData.impl.workWidth
       end
@@ -1763,7 +1950,7 @@ function FS22_EnhancedVehicle:updateTrack(self, updateAngle, updateAngleValue, u
 
     -- should we change size of track
     if deltaWorkWidth ~= 0 then
-      self.vData.track.workWidth = self.vData.track.workWidth + deltaWorkWidth
+      self.vData.track.workWidth = Between(self.vData.track.workWidth + deltaWorkWidth, 0.1, 100)
       updateSnap = true
     end
 
@@ -1876,49 +2063,81 @@ function FS22_EnhancedVehicle:enumerateImplements(self)
   end
 
   -- new array and some defaults
-  self.vData.impl = { workWidth = 0, offset = 0, left = { px = -99999999 }, right = { px = 99999999 }, plow = nil }
+  self.vData.impl = { workWidth = 0, offset = 0, left = { px = -99999999, marker = nil }, right = { px = 99999999, marker = nil }, plow = nil }
 
   -- now we go through the list and fetch relevant data
+  local _width1, _width2 = 0, 0
+  local _min1, _max1 = -99999999, 99999999
+  local _min2, _max2 = -99999999, 99999999
   for _, obj in pairs(listOfObjects) do
 
-    -- get outer left and outer right positions
+    -- for objects with AImarkers
     local leftMarker, rightMarker = obj:getAIMarkers()
     if leftMarker ~= nil and rightMarker ~= nil then
-      local _lx, _ly, _lz = localToLocal(leftMarker,  obj.rootNode, 0, 0, 0)
-      local _rx, _ry, _rz = localToLocal(rightMarker, obj.rootNode, 0, 0, 0)
+      local _lx, _, _ = localToLocal(leftMarker,  obj.rootNode, 0, 0, 0)
+      local _rx, _, _ = localToLocal(rightMarker, obj.rootNode, 0, 0, 0)
+      if debug > 1 then print(obj.typeName..", lx: ".._lx..", rx: ".._rx) end
+      if _lx > _min2 then
+        _min2 = _lx
+        self.vData.impl.left.marker = leftMarker
+      end
+      if _rx < _max2 then
+        _max2 = _rx
+        self.vData.impl.right.marker = rightMarker
+      end
 
-      -- calculate working width and continue with a useful width only
-      local _width = math.abs(_lx - _rx)
-      if _width >= 0.1 then
+      -- working width
+      _width2 = math.abs(_min2 - _max2)
+      if debug > 1 then print("width 2: ".._width2) end
 
-        -- if "more left" or "more right" -> update data
-        if _lx > self.vData.impl.left.px then
-          self.vData.impl.left.px = _lx
-          self.vData.impl.left.py = _ly
-          self.vData.impl.left.pz = _lz
-          self.vData.impl.left.marker = leftMarker
+      -- if it is a plow -> save plow rotation
+      if obj.typeName == "plow" or obj.typeName == "plowPacker" then
+        self.vData.impl.plow = obj.spec_plow
+        self.vData.track.plow = self.vData.impl.plow.rotationMax
+      end
+    else
+      -- for objects without AIMarkers
+      local _found = false
+      for _, workArea in pairs(obj.spec_workArea.workAreas) do
+        if workArea.functionName ~= nil then
+          if workArea.functionName == "processRidgeMarkerArea" or workArea.functionName == "processCombineSwathArea" or workArea.functionName == "processCombineChopperArea" then
+            if debug > 1 then print("skip") end
+            goto continue
+          end
         end
-        if _rx < self.vData.impl.right.px then
-          self.vData.impl.right.px = _rx
-          self.vData.impl.right.py = _ry
-          self.vData.impl.right.pz = _rz
-          self.vData.impl.right.marker = rightMarker
-        end
+        local _x1 = localToLocal(workArea.start, obj.rootNode, 0, 0, 0)
+        local _x2 = localToLocal(workArea.width, obj.rootNode, 0, 0, 0)
 
-        -- working width
-        self.vData.impl.workWidth = Round(math.abs(self.vData.impl.left.px - self.vData.impl.right.px), 4)
-
-        -- offset
-        self.vData.impl.offset = Round((self.vData.impl.left.px + self.vData.impl.right.px) * 0.5, 4)
-        if self.vData.impl.offset > -0.1 and self.vData.impl.offset < 0.1 then self.vData.impl.offset = 0 end
-
-        -- if it is a plow -> save plow rotation
-        if obj.typeName == "plow" or obj.typeName == "plowPacker" then
-          self.vData.impl.plow = obj.spec_plow
-          self.vData.track.plow = self.vData.impl.plow.rotationMax
-        end
+        if debug > 1 then print(obj.typeName..", "..workArea.type..", x1: ".._x1..", x2: ".._x2) end
+        _min1 = math.max(_min1, _x1)
+        _min1 = math.max(_min1, _x2)
+        _max1 = math.min(_max1, _x1)
+        _max1 = math.min(_max1, _x2)
+        _found = true
+        ::continue::
+      end
+      if _found then
+        _width1 = _min1 + math.abs(_max1)
+        if debug > 1 then print("width 1: ".._width1) end
       end
     end
+
+    -- working width
+    if _width1 > self.vData.impl.workWidth then
+      self.vData.impl.workWidth = Round(_width1, 4)
+      self.vData.impl.left.px = _min1
+      self.vData.impl.right.px = _max1
+    end
+    if _width2 > self.vData.impl.workWidth then
+      self.vData.impl.workWidth = Round(_width2, 4)
+      self.vData.impl.left.px = _min2
+      self.vData.impl.right.px = _max2
+    end
+    if debug > 1 then print("final width: "..self.vData.impl.workWidth) end
+
+    -- offset
+    self.vData.impl.offset = Round((self.vData.impl.left.px + self.vData.impl.right.px) * 0.5, 4)
+    if self.vData.impl.offset > -0.1 and self.vData.impl.offset < 0.1 then self.vData.impl.offset = 0 end
 
     if debug > 1 then print("-> Type: "..obj.typeName..", Width: "..self.vData.impl.workWidth..", Offset: "..self.vData.impl.offset) end
   end
@@ -2148,7 +2367,7 @@ function FS22_EnhancedVehicle:updateVehiclePhysics( originalFunction, axisForwar
         -- when snap to track -> gently push the driving direction towards destination position depending on current speed
         if self.vData.is[6] then
 --            _old = _w2
-          _w2 = _w2 - Between(dotLR * Between(10 - self:getLastSpeed() / 8, 4, 8) * movingDirection, -90, 90) -- higher means stronger movement force to destination
+          _w2 = _w2 - Between(dotLR * Between(10 - self:getLastSpeed() / 8, 4, 8) * movingDirection * 1.3, -90, 90) -- higher means stronger movement force to destination
 --            print("old: ".._old..", new: ".._w2..", dot: "..dotLR..", md: "..movingDirection.." / "..Between(10 - self:getLastSpeed() / 8, 4, 8))
         end
         if _w2 > 180 then _w2 = _w2 - 360 end
@@ -2161,18 +2380,19 @@ function FS22_EnhancedVehicle:updateVehiclePhysics( originalFunction, axisForwar
 --          print("delta: "..delta..", d: "..dotLR..", w1: ".._w1..", w2: ".._w2..", rot: "..self.vData.rot..", diffdeg: "..diffdeg)
 
         -- calculate new steering wheel "direction"
+        local _d = 18
         -- if we have still more than 20° to steer -> increase steering wheel constantly until maximum
         -- if in between -20 to 20 -> adjust steering wheel according to remaining degrees
         -- if in between -2 to 2 -> set steering wheel directly
         local a = self.vData.axisSidePrev
-        if (diffdeg < -20) then
+        if (diffdeg < -_d) then
           a = a - delta * 0.5
         end
-        if (diffdeg > 20) then
+        if (diffdeg > _d) then
           a = a + delta * 0.5
         end
-        if (diffdeg >= -20) and (diffdeg <= 20) then
-          local newa = diffdeg / 20 * movingDirection -- linear from 1 to 0.1
+        if (diffdeg >= -_d) and (diffdeg <= _d) then
+          local newa = diffdeg / _d * movingDirection -- linear from 1 to 0.1
           if a < newa then
 --              print("1 dd: "..diffdeg.." a: "..a.." newa: "..newa..", md: "..movingDirection..", dot: "..dotLR)
             a = a + delta * 1.2 * movingDirection
@@ -2183,7 +2403,7 @@ function FS22_EnhancedVehicle:updateVehiclePhysics( originalFunction, axisForwar
           end
         end
         if (diffdeg >= -2) and (diffdeg <= 2) then
-          a = diffdeg / 20 * movingDirection --* delta
+          a = diffdeg / _d * movingDirection
         end
         a = Between(a, -1, 1)
 
@@ -2206,3 +2426,39 @@ function FS22_EnhancedVehicle:updateVehiclePhysics( originalFunction, axisForwar
   return result
 end
 Drivable.updateVehiclePhysics = Utils.overwrittenFunction( Drivable.updateVehiclePhysics, FS22_EnhancedVehicle.updateVehiclePhysics )
+
+-- #############################################################################
+
+function FS22_EnhancedVehicle:updateWheelsPhysics( originalFunction, dt, currentSpeed, acceleration, doHandbrake, stopAndGoBraking )
+  if debug > 2 then print("function WheelsUtil.updateWheelsPhysics("..self.typeDesc..", "..tostring(dt)..", "..tostring(currentSpeed)..", "..tostring(acceleration)..", "..tostring(doHandbrake)..", "..tostring(stopAndGoBraking)) end
+
+  local brakeLights = false
+  if self.vData ~= nil and self.vData.is[14] then
+    if self:getIsVehicleControlledByPlayer() and self:getIsMotorStarted() then
+      -- parkBreakIsOn
+      if self.vData.is[13] then
+        brakeLights = true
+        if currentSpeed >= -0.0003 and currentSpeed <= 0.0003 then
+          brakeLights = false
+        end
+        acceleration = 0
+        currentSpeed = 0
+      end
+    end
+  end
+
+  -- call the original function to do the actual physics stuff
+  local state, result = pcall( originalFunction, self, dt, currentSpeed, acceleration, doHandbrake, stopAndGoBraking )
+  if not ( state ) then
+    print("Ooops in updateWheelsPhysics :" .. tostring(result))
+  end
+
+  if self:getIsVehicleControlledByPlayer() and self:getIsMotorStarted() then
+    if brakeLights and type(self.setBrakeLightsVisibility) == "function" then
+      self:setBrakeLightsVisibility(true)
+    end
+  end
+
+  return result
+end
+WheelsUtil.updateWheelsPhysics = Utils.overwrittenFunction( WheelsUtil.updateWheelsPhysics, FS22_EnhancedVehicle.updateWheelsPhysics )
